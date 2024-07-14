@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"github.com/mmorejon/microservices-docker-go-mongodb/users/pkg/models/mongodb"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"log"
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/mmorejon/microservices-docker-go-mongodb/users/pkg/models/mongodb"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type application struct {
@@ -33,6 +34,16 @@ func main() {
 	// Create logger for writing information and error messages.
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+
+	// Set up OpenTelemetry.
+	otelShutdown, err := setupTelemetry(context.Background())
+	if err != nil {
+		return
+	}
+	// Handle shutdown properly so nothing leaks.
+	defer func() {
+		err = errors.Join(err, otelShutdown(context.Background()))
+	}()
 
 	// Create mongo client configuration
 	co := options.Client().ApplyURI(*mongoURI)
@@ -75,10 +86,14 @@ func main() {
 
 	// Initialize a new http.Server struct.
 	serverURI := fmt.Sprintf("%s:%d", *serverAddr, *serverPort)
+
+	routes := app.routes()
+	handler := otelhttp.NewHandler(http.HandlerFunc(routes.ServeHTTP), "users")
+
 	srv := &http.Server{
 		Addr:         serverURI,
 		ErrorLog:     errLog,
-		Handler:      app.routes(),
+		Handler:      handler,
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,

@@ -1,5 +1,5 @@
 # base image
-FROM golang:1.19.3-alpine AS builder
+FROM golang:1.22-alpine AS builder
 # create appuser
 RUN adduser -D -g '' elf
 # create workspace

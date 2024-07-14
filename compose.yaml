@@ -1,3 +1,5 @@
+version: "3"
+
 services:
   proxy:
     image: traefik:v3.0.2
@@ -13,7 +15,8 @@ services:
       # install plugin rewrite body
       # - "--experimental.plugins.plugin-rewrite.modulename=github.com/traefik/plugin-rewritebody"
       # - "--experimental.plugins.plugin-rewrite.version=v0.3.1"
-    labels: {}
+    labels:
+      {}
       # Create basics middlewares
       # - "traefik.http.middlewares.my-auth.basicauth.users=test:$$apr1$$H6uskkkW$$IgXLP6ewTrSuBkTrqE8wj/"
       # - "traefik.http.middlewares.my-compress.compress=true"
@@ -60,8 +63,7 @@ services:
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_RESOURCE_ATTRIBUTES=service.name=website,service.version=${WEBSITE_SERVICE_VERSION},deployment.environment=${SERVICE_ENVIRONMENT}
     env_file:
-      - path: .env
-        required: true
+      - .env
 
   movies:
     build: ./movies
@@ -86,8 +88,7 @@ services:
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_RESOURCE_ATTRIBUTES=service.name=movies,service.version=${MOVIES_SERVICE_VERSION},deployment.environment=${SERVICE_ENVIRONMENT}
     env_file:
-      - path: .env
-        required: true
+      - .env
 
   bookings:
     build: ./bookings
@@ -110,8 +111,7 @@ services:
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_RESOURCE_ATTRIBUTES=service.name=bookings,service.version=${BOOKINGS_SERVICE_VERSION},deployment.environment=${SERVICE_ENVIRONMENT}
     env_file:
-      - path: .env
-        required: true
+      - .env
 
   showtimes:
     build: ./showtimes
@@ -134,8 +134,7 @@ services:
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_RESOURCE_ATTRIBUTES=service.name=showtimes,service.version=${SHOWTIMES_SERVICE_VERSION},deployment.environment=${SERVICE_ENVIRONMENT}
     env_file:
-      - path: .env
-        required: true
+      - .env
 
   users:
     build: ./users
@@ -158,8 +157,7 @@ services:
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_RESOURCE_ATTRIBUTES=service.name=users,service.version=${USERS_SERVICE_VERSION},deployment.environment=${SERVICE_ENVIRONMENT}
     env_file:
-      - path: .env
-        required: true
+      - .env
 
   db:
     image: mongo:4.4.29
@@ -177,6 +175,8 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.52.0
+    ports:
+      - 9090:9090
     command:
       - "--config.file=/etc/prometheus/prom.yml"
     restart: always
@@ -191,6 +191,8 @@ services:
   otelcol:
     image: otel/opentelemetry-collector:0.102.1
     restart: always
+    ports:
+      - 8889:8889
     depends_on:
       - prometheus
     volumes:
@@ -200,7 +202,7 @@ services:
       - "traefik.enable=false"
 
   grafana:
-    image: grafana/grafana:10.4.4
+    image: grafana/grafana:latest
     volumes:
       - ./hack/grafana.ini:/etc/grafana/grafana.ini
       - ./hack/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml
